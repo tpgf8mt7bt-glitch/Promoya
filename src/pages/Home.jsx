@@ -49,9 +49,9 @@ export default function Home() {
       if (err) setError('No pudimos cargar las promos cercanas.');
       setPromos(data || []);
     } else {
-      let query = supabase
+            let query = supabase
         .from('promos')
-        .select('id, titulo, precio_original, precio_promo, categoria, comercio_id, comercios(nombre_comercio, latitud, longitud)')
+        .select('id, titulo, precio_original, precio_promo, categoria, comercio_id, comercios(nombre_comercio, latitud, longitud), promo_imagenes(imagen_url, orden)')
         .eq('estado', 'activa')
         .order('fecha_creacion', { ascending: false });
       if (categoria) query = query.eq('categoria', categoria);
@@ -64,8 +64,10 @@ export default function Home() {
           nombre_comercio: p.comercios?.nombre_comercio,
           latitud: p.comercios?.latitud,
           longitud: p.comercios?.longitud,
+          imagen_url: [...(p.promo_imagenes || [])].sort((a, b) => a.orden - b.orden)[0]?.imagen_url,
         }))
       );
+
     }
     setCargando(false);
   }
