@@ -73,9 +73,13 @@ export default function ComercioPanel() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
-      <h1 className="font-display font-extrabold text-2xl text-navy">
+            <h1 className="font-display font-extrabold text-2xl text-navy">
         Hola, {comercio.nombre_comercio}
       </h1>
+      <Link to="/comercio/perfil" className="text-sm text-gold-dark font-semibold underline">
+        Editar mis datos
+      </Link>
+
 
       {comercio.estado === 'pendiente' && (
         <div className="bg-gold/10 border border-gold/30 text-navy rounded-xl p-4 mt-4 text-sm">
