@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { PLANES } from '../lib/constants';
 
-// El acceso a este panel se restringe por email en ADMIN_EMAILS (ver .env.example
-// -> VITE_ADMIN_EMAILS). Es una validación simple para el MVP; para más
-// seguridad conviene mover esto a una tabla `admins` + RLS más adelante.
 const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS || '').split(',').map((e) => e.trim());
 
 export default function AdminPanel() {
@@ -12,6 +10,8 @@ export default function AdminPanel() {
   const [comercios, setComercios] = useState([]);
   const [pagos, setPagos] = useState([]);
   const [tab, setTab] = useState('comercios');
+  const [activando, setActivando] = useState(null);
+  const [seleccion, setSeleccion] = useState({});
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -48,6 +48,77 @@ export default function AdminPanel() {
     cargarComercios();
   }
 
+  function actualizarSeleccion(comercioId, campo, valor) {
+    setSeleccion((s) => ({
+      ...s,
+      [comercioId]: { plan: 'full', meses: 1, ...s[comercioId], [campo]: valor },
+    }));
+  }
+
+  async function activarPlanGratis(comercioId) {
+    const { plan = 'full', meses = 1 } = seleccion[comercioId] || {};
+    setActivando(comercioId);
+
+    try {
+      await supabase
+        .from('suscripciones')
+        .update({ estado: 'vencida' })
+        .eq('comercio_id', comercioId)
+        .eq('estado', 'activa');
+
+      const planInfo = PLANES[plan];
+      const vencimiento = new Date();
+      vencimiento.setDate(vencimiento.getDate() + Number(meses) * 30);
+
+      const { data: nuevaSub, error: subError } = await supabase
+        .from('suscripciones')
+        .insert({
+          comercio_id: comercioId,
+          plan,
+          limite_articulos: planInfo.limite_articulos,
+          limite_fotos: planInfo.limite_fotos,
+          fecha_vencimiento: vencimiento.toISOString(),
+          estado: 'activa',
+          monto_pagado: 0,
+          fecha_pago: new Date().toISOString(),
+        })
+        .select()
+        .single();
+      if (subError) throw subError;
+
+      await supabase.from('pagos').insert({
+        comercio_id: comercioId,
+        suscripcion_id: nuevaSub.id,
+        monto: 0,
+        tipo: 'regalo',
+        estado: 'aprobado',
+      });
+
+      const { data: pausadas } = await supabase
+        .from('promos')
+        .select('id')
+        .eq('comercio_id', comercioId)
+        .eq('estado', 'pausada')
+        .order('fecha_creacion', { ascending: false })
+        .limit(planInfo.limite_articulos);
+
+      if (pausadas?.length) {
+        await supabase
+          .from('promos')
+          .update({ estado: 'activa' })
+          .in('id', pausadas.map((p) => p.id));
+      }
+
+      cargarComercios();
+      cargarPagos();
+    } catch (err) {
+      console.error(err);
+      alert('No se pudo activar el plan: ' + err.message);
+    } finally {
+      setActivando(null);
+    }
+  }
+
   if (autorizado === null) return <div className="max-w-5xl mx-auto px-4 py-16 text-center text-navy/40">Verificando acceso...</div>;
   if (autorizado === false) {
     return (
@@ -73,31 +144,66 @@ export default function AdminPanel() {
 
       {tab === 'comercios' ? (
         <div className="mt-6 flex flex-col gap-3">
-          {comercios.map((c) => (
-            <div key={c.id} className="card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <p className="font-semibold text-navy">{c.nombre_comercio}</p>
-                <p className="text-sm text-navy/50">{c.email} · {c.categoria} · {c.direccion}</p>
-                <span className={`text-xs font-semibold ${
-                  c.estado === 'activo' ? 'text-green-600' : c.estado === 'suspendido' ? 'text-red-500' : 'text-gold-dark'
-                }`}>
-                  {c.estado}
-                </span>
-              </div>
-              <div className="flex gap-2">
-                {c.estado !== 'activo' && (
-                  <button onClick={() => cambiarEstado(c.id, 'activo')} className="btn-primary !py-1.5 !px-4 text-xs">
-                    Aprobar
+          {comercios.map((c) => {
+            const sel = seleccion[c.id] || { plan: 'full', meses: 1 };
+            return (
+              <div key={c.id} className="card p-4 flex flex-col gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-navy">{c.nombre_comercio}</p>
+                    <p className="text-sm text-navy/50">{c.email} · {c.categoria} · {c.direccion}</p>
+                    <span className={`text-xs font-semibold ${
+                      c.estado === 'activo' ? 'text-green-600' : c.estado === 'suspendido' ? 'text-red-500' : 'text-gold-dark'
+                    }`}>
+                      {c.estado}
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    {c.estado !== 'activo' && (
+                      <button onClick={() => cambiarEstado(c.id, 'activo')} className="btn-primary !py-1.5 !px-4 text-xs">
+                        Aprobar
+                      </button>
+                    )}
+                    {c.estado !== 'suspendido' && (
+                      <button onClick={() => cambiarEstado(c.id, 'suspendido')} className="btn-secondary !py-1.5 !px-4 text-xs">
+                        Suspender
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-navy/10">
+                  <span className="text-xs text-navy/50">Regalar plan:</span>
+                  <select
+                    value={sel.plan}
+                    onChange={(e) => actualizarSeleccion(c.id, 'plan', e.target.value)}
+                    className="text-sm border border-navy/15 rounded-pill px-3 py-1"
+                  >
+                    <option value="basico">Básico</option>
+                    <option value="medio">Medio</option>
+                    <option value="full">Full</option>
+                  </select>
+                  <select
+                    value={sel.meses}
+                    onChange={(e) => actualizarSeleccion(c.id, 'meses', Number(e.target.value))}
+                    className="text-sm border border-navy/15 rounded-pill px-3 py-1"
+                  >
+                    <option value={1}>1 mes</option>
+                    <option value={3}>3 meses</option>
+                    <option value={6}>6 meses</option>
+                    <option value={12}>12 meses</option>
+                  </select>
+                  <button
+                    onClick={() => activarPlanGratis(c.id)}
+                    disabled={activando === c.id}
+                    className="btn-primary !py-1.5 !px-4 text-xs"
+                  >
+                    {activando === c.id ? 'Activando...' : 'Activar gratis'}
                   </button>
-                )}
-                {c.estado !== 'suspendido' && (
-                  <button onClick={() => cambiarEstado(c.id, 'suspendido')} className="btn-secondary !py-1.5 !px-4 text-xs">
-                    Suspender
-                  </button>
-                )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <div className="mt-6 overflow-x-auto">
