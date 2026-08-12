@@ -11,6 +11,7 @@ export default function AdminPanel() {
   const [pagos, setPagos] = useState([]);
   const [tab, setTab] = useState('comercios');
   const [activando, setActivando] = useState(null);
+  const [confirmado, setConfirmado] = useState({});
   const [seleccion, setSeleccion] = useState({});
   const navigate = useNavigate();
 
@@ -111,6 +112,8 @@ export default function AdminPanel() {
 
       cargarComercios();
       cargarPagos();
+      setConfirmado((c) => ({ ...c, [comercioId]: true }));
+      setTimeout(() => setConfirmado((c) => ({ ...c, [comercioId]: false })), 4000);
     } catch (err) {
       console.error(err);
       alert('No se pudo activar el plan: ' + err.message);
@@ -200,6 +203,9 @@ export default function AdminPanel() {
                   >
                     {activando === c.id ? 'Activando...' : 'Activar gratis'}
                   </button>
+                  {confirmado[c.id] && (
+                    <span className="text-xs text-green-600 font-semibold">✓ Plan activado</span>
+                  )}
                 </div>
               </div>
             );
