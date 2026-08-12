@@ -70,6 +70,9 @@ export const RADIOS_DISPONIBLES_KM = [3, 5, 10, 20, 50];
 export const SUPEROFERTA_PISO = 5000;
 export const SUPEROFERTA_PLAN_REQUERIDO = 'full';
 
+// Admin: número de WhatsApp para avisos de comercios nuevos (formato wa.me,
+// sin +, con código de país y el 9 de celular para Argentina)
+export const ADMIN_WHATSAPP = '5492216227196';
 export const CATEGORIAS = [
   'Gastronomía',
   'Indumentaria',
