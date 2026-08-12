@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { CATEGORIAS } from '../lib/constants';
 import SubidorFotos from '../components/SubidorFotos';
 
 export default function PromoForm() {
-  const { id } = useParams(); // presente solo en edición
+  const { id } = useParams();
   const esEdicion = Boolean(id);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const volverA = searchParams.get('volver') === 'superoferta' ? '/comercio/superoferta' : '/comercio/panel';
 
   const [comercioId, setComercioId] = useState(null);
+  const [categoriaComercio, setCategoriaComercio] = useState('');
   const [limiteFotos, setLimiteFotos] = useState(1);
   const [fotos, setFotos] = useState([]);
   const [form, setForm] = useState({
@@ -19,7 +19,7 @@ export default function PromoForm() {
     descripcion_corta: '',
     precio_original: '',
     precio_promo: '',
-    categoria: CATEGORIAS[0],
+    categoria: '',
     dias_vigencia: 30,
   });
   const [error, setError] = useState('');
@@ -36,10 +36,14 @@ export default function PromoForm() {
 
     const { data: c } = await supabase
       .from('comercios')
-      .select('id')
+      .select('id, categoria')
       .eq('auth_user_id', sesion.session.user.id)
       .single();
     setComercioId(c.id);
+    setCategoriaComercio(c.categoria);
+    if (!esEdicion) {
+      setForm((f) => ({ ...f, categoria: c.categoria }));
+    }
 
     const { data: s } = await supabase
       .from('suscripciones')
@@ -121,7 +125,7 @@ export default function PromoForm() {
             descripcion_corta: form.descripcion_corta,
             precio_original: form.precio_original,
             precio_promo: form.precio_promo,
-            categoria: form.categoria,
+            categoria: categoriaComercio,
             fecha_vencimiento: vencimiento.toISOString(),
           })
           .select()
@@ -208,9 +212,13 @@ export default function PromoForm() {
           </span>
         )}
 
-        <select value={form.categoria} onChange={(e) => update('categoria', e.target.value)} className="input-field">
-          {CATEGORIAS.map((c) => <option key={c} value={c}>{c}</option>)}
-        </select>
+        <div>
+          <label className="text-sm text-navy/60">Categoría</label>
+          <p className="input-field mt-1 bg-navy/5 text-navy/70">{categoriaComercio}</p>
+          <p className="text-xs text-navy/40 mt-1">
+            Es la misma categoría de tu comercio, se pide una sola vez al registrarte.
+          </p>
+        </div>
 
         <div>
           <label className="text-sm text-navy/60">Vigencia de la promo</label>
