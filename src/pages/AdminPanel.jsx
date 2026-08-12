@@ -32,7 +32,20 @@ export default function AdminPanel() {
 
   async function cargarComercios() {
     const { data } = await supabase.from('comercios').select('*').order('fecha_registro', { ascending: false });
-    setComercios(data || []);
+    const comerciosConPlan = await Promise.all(
+      (data || []).map(async (c) => {
+        const { data: sub } = await supabase
+          .from('suscripciones')
+          .select('plan, fecha_vencimiento')
+          .eq('comercio_id', c.id)
+          .eq('estado', 'activa')
+          .order('fecha_inicio', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        return { ...c, suscripcion_activa: sub };
+      })
+    );
+    setComercios(comerciosConPlan);
   }
 
   async function cargarPagos() {
@@ -160,6 +173,12 @@ export default function AdminPanel() {
                     }`}>
                       {c.estado}
                     </span>
+                    {c.suscripcion_activa && (
+                      <p className="text-xs text-navy/40 mt-1">
+                        Plan: <strong className="text-navy/70">{PLANES[c.suscripcion_activa.plan]?.nombre}</strong>
+                        {' '}· vence {new Date(c.suscripcion_activa.fecha_vencimiento).toLocaleDateString('es-AR')}
+                      </p>
+                    )}
                   </div>
                   <div className="flex gap-2">
                     {c.estado !== 'activo' && (
