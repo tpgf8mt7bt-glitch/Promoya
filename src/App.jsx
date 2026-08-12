@@ -10,6 +10,8 @@ import PromoForm from './pages/PromoForm';
 import AdminPanel from './pages/AdminPanel';
 import Superofertas from './pages/Superofertas';
 import ComercioSuperoferta from './pages/ComercioSuperoferta';
+import ComercioPerfil from './pages/ComercioPerfil';
+
 
 export default function App() {
   return (
@@ -25,7 +27,9 @@ export default function App() {
           <Route path="/comercio/registro" element={<ComercioRegister />} />
           <Route path="/comercio/panel" element={<ComercioPanel />} />
           <Route path="/comercio/plan" element={<ComercioPlan />} />
-          <Route path="/comercio/superoferta" element={<ComercioSuperoferta />} />
+                    <Route path="/comercio/superoferta" element={<ComercioSuperoferta />} />
+          <Route path="/comercio/perfil" element={<ComercioPerfil />} />
+
           <Route path="/comercio/promo/nueva" element={<PromoForm />} />
           <Route path="/comercio/promo/:id/editar" element={<PromoForm />} />
 
