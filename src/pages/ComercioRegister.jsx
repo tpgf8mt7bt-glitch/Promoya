@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { CATEGORIAS, PLANES } from '../lib/constants';
+import { CATEGORIAS, PLANES, ADMIN_WHATSAPP } from '../lib/constants';
+import MapaSelectorUbicacion from '../components/MapaSelectorUbicacion';
+
+const CENTRO_DEFAULT = [-34.6037, -58.3816]; // Buenos Aires, si no hay geolocalización
 
 export default function ComercioRegister() {
   const [form, setForm] = useState({
@@ -13,22 +16,24 @@ export default function ComercioRegister() {
     ciudad: '',
     categoria: CATEGORIAS[0],
   });
+  const [posicion, setPosicion] = useState(CENTRO_DEFAULT);
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(false);
+  const [registroExitoso, setRegistroExitoso] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setPosicion([pos.coords.latitude, pos.coords.longitude]),
+        () => {},
+        { timeout: 8000 }
+      );
+    }
+  }, []);
 
   function update(campo, valor) {
     setForm((f) => ({ ...f, [campo]: valor }));
-  }
-
-  async function geocodificar(direccion) {
-    // Nominatim (OpenStreetMap) — gratis, sin API key. Para producción con
-    // mucho volumen conviene un proveedor con SLA, pero para el MVP alcanza.
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(direccion)}`;
-    const res = await fetch(url, { headers: { 'Accept-Language': 'es' } });
-    const data = await res.json();
-    if (!data[0]) return null;
-    return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
   }
 
   async function handleSubmit(e) {
@@ -37,13 +42,6 @@ export default function ComercioRegister() {
     setCargando(true);
 
     try {
-      const coords = await geocodificar(form.direccion);
-      if (!coords) {
-        setError('No pudimos ubicar esa dirección. Probá ser más específico (calle, número, ciudad).');
-        setCargando(false);
-        return;
-      }
-
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: form.email,
         password: form.password,
@@ -59,10 +57,10 @@ export default function ComercioRegister() {
           telefono: form.telefono,
           direccion: form.direccion,
           ciudad: form.ciudad,
-          latitud: coords.lat,
-          longitud: coords.lng,
+          latitud: posicion[0],
+          longitud: posicion[1],
           categoria: form.categoria,
-          estado: 'pendiente', // el admin lo activa (ver panel admin)
+          estado: 'pendiente',
         })
         .select()
         .single();
@@ -81,13 +79,45 @@ export default function ComercioRegister() {
       });
       if (subError) throw subError;
 
-      navigate('/comercio/panel');
+      setRegistroExitoso(true);
     } catch (err) {
       console.error(err);
       setError(err.message || 'Ocurrió un error al registrar tu comercio.');
     } finally {
       setCargando(false);
     }
+  }
+
+  if (registroExitoso) {
+    const mensaje = encodeURIComponent(
+      `Hola! Registré mi comercio "${form.nombre_comercio}" (${form.categoria}, ${form.ciudad}) en PromoYa. ¿Podrías aprobarlo?`
+    );
+    return (
+      <div className="max-w-md mx-auto px-4 py-16 text-center">
+        <div className="text-5xl mb-4">🎉</div>
+        <h1 className="font-display font-extrabold text-2xl text-navy">
+          ¡Tu comercio ya está registrado!
+        </h1>
+        <p className="text-navy/60 mt-3">
+          Ya podés cargar tus primeras promos. Para que se muestren públicamente, un admin
+          tiene que aprobar tu comercio primero — avisale por WhatsApp para que sea más rápido.
+        </p>
+        <a
+          href={`https://wa.me/${ADMIN_WHATSAPP}?text=${mensaje}`}
+          target="_blank"
+          rel="noreferrer"
+          className="btn-primary inline-block mt-6"
+        >
+          Avisar por WhatsApp
+        </a>
+        <button
+          onClick={() => navigate('/comercio/panel')}
+          className="block w-full text-navy/50 text-sm mt-4 underline"
+        >
+          Continuar a mi panel
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -108,18 +138,20 @@ export default function ComercioRegister() {
           onChange={(e) => update('password', e.target.value)} className="input-field" minLength={6} />
         <input placeholder="Teléfono (WhatsApp)" value={form.telefono}
           onChange={(e) => update('telefono', e.target.value)} className="input-field" />
-        <input required placeholder="Dirección completa (calle, número, ciudad)" value={form.direccion}
+        <input required placeholder="Dirección (calle y número, para mostrar a tus clientes)" value={form.direccion}
           onChange={(e) => update('direccion', e.target.value)} className="input-field" />
-        <div>
-          <input required placeholder="Ciudad" value={form.ciudad}
-            onChange={(e) => update('ciudad', e.target.value)} className="input-field w-full" />
-          <p className="text-xs text-navy/40 mt-1">
-            Se usa para las Superofertas: la exclusividad es por categoría + ciudad.
-          </p>
-        </div>
+        <input required placeholder="Ciudad" value={form.ciudad}
+          onChange={(e) => update('ciudad', e.target.value)} className="input-field" />
         <select value={form.categoria} onChange={(e) => update('categoria', e.target.value)} className="input-field">
           {CATEGORIAS.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
+
+        <div>
+          <label className="text-sm font-semibold text-navy/70">Ubicación exacta de tu local</label>
+          <div className="mt-1">
+            <MapaSelectorUbicacion posicion={posicion} onCambiar={setPosicion} />
+          </div>
+        </div>
 
         {error && <p className="text-red-600 text-sm">{error}</p>}
         <button type="submit" disabled={cargando} className="btn-primary">
