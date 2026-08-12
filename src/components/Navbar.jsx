@@ -18,11 +18,14 @@ export default function Navbar() {
   }, []);
 
   async function cargarComercio(authUserId) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('comercios')
       .select('nombre_comercio')
       .eq('auth_user_id', authUserId)
-      .single();
+      .maybeSingle();
+    if (error) {
+      console.error('Error cargando comercio en navbar:', error);
+    }
     setComercio(data);
   }
 
@@ -35,6 +38,7 @@ export default function Navbar() {
     <header className="sticky top-0 z-[1000] bg-white/95 backdrop-blur border-b border-navy/10">
       <nav className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2 font-display font-extrabold text-xl">
+          <img src="/logo.jpg" alt="PromoYa" className="h-9 w-9 rounded-full object-cover" />
           <span className="text-navy">Promo</span>
           <span className="text-gold">Ya</span>
         </Link>
