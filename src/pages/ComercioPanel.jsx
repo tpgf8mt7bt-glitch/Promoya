@@ -134,15 +134,17 @@ export default function ComercioPanel() {
         <div className="grid sm:grid-cols-2 gap-3 mt-4">
           {promos.map((p) => (
             <div key={p.id} className="card p-4 flex items-center justify-between">
-              <div>
+                            <div>
                 <p className="font-semibold text-navy">{p.titulo}</p>
                 <p className="text-sm text-navy/50">
                   ${Number(p.precio_promo).toLocaleString('es-AR')} ·{' '}
                   <span className={p.estado === 'activa' ? 'text-green-600' : 'text-navy/40'}>
                     {p.estado}
                   </span>
+                  {' '}· 👁 {p.vistas || 0} vistas
                 </p>
               </div>
+
               <div className="flex gap-2 text-sm">
                 <Link to={`/comercio/promo/${p.id}/editar`} className="text-navy/50 hover:text-navy">
                   Editar
