@@ -46,7 +46,6 @@ export default function PromoDetail() {
       <Link to="/" className="text-navy/50 text-sm hover:text-navy">← Volver a todas las promos</Link>
 
       <div className="grid sm:grid-cols-2 gap-8 mt-4">
-        {/* Galería */}
         <div>
           <div className="aspect-square card overflow-hidden bg-navy/5">
             {imagenes[imagenActiva] ? (
@@ -72,7 +71,6 @@ export default function PromoDetail() {
           )}
         </div>
 
-        {/* Info */}
         <div>
           <span className="text-xs uppercase tracking-wide text-navy/40 font-semibold">{promo.categoria}</span>
           <h1 className="font-display font-extrabold text-2xl sm:text-3xl text-navy mt-1">{promo.titulo}</h1>
@@ -95,4 +93,23 @@ export default function PromoDetail() {
               <p className="font-display font-bold text-navy">{comercio.nombre_comercio}</p>
               <p className="text-sm text-navy/60 mt-1">{comercio.direccion}</p>
               {comercio.telefono && (
-                
+                <a
+                  href={`https://wa.me/${comercio.telefono.replace(/\D/g, '')}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-primary inline-block mt-3 !py-2 !px-5 text-sm"
+                >
+                  Contactar por WhatsApp
+                </a>
+              )}
+            </div>
+          )}
+
+          <p className="text-xs text-navy/40 mt-4">
+            Promo válida hasta el {new Date(promo.fecha_vencimiento).toLocaleDateString('es-AR')}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
