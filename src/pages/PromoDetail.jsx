@@ -15,12 +15,14 @@ export default function PromoDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  async function cargarPromo() {
+    async function cargarPromo() {
     setCargando(true);
     const { data: p } = await supabase.from('promos').select('*').eq('id', id).single();
     if (p) {
       setPromo(p);
+      supabase.rpc('incrementar_vista_promo', { p_promo_id: id });
       const { data: c } = await supabase.from('comercios').select('*').eq('id', p.comercio_id).single();
+
       setComercio(c);
       const { data: imgs } = await supabase
         .from('promo_imagenes')
