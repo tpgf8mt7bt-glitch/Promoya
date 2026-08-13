@@ -15,14 +15,16 @@ export default function PromoDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-    async function cargarPromo() {
+  async function cargarPromo() {
     setCargando(true);
     const { data: p } = await supabase.from('promos').select('*').eq('id', id).single();
     if (p) {
       setPromo(p);
-      supabase.rpc('incrementar_vista_promo', { p_promo_id: id });
+      const { error: vistaError } = await supabase.rpc('incrementar_vista_promo', { p_promo_id: id });
+      if (vistaError) {
+        alert('Error al sumar vista: ' + vistaError.message);
+      }
       const { data: c } = await supabase.from('comercios').select('*').eq('id', p.comercio_id).single();
-
       setComercio(c);
       const { data: imgs } = await supabase
         .from('promo_imagenes')
@@ -93,23 +95,4 @@ export default function PromoDetail() {
               <p className="font-display font-bold text-navy">{comercio.nombre_comercio}</p>
               <p className="text-sm text-navy/60 mt-1">{comercio.direccion}</p>
               {comercio.telefono && (
-                <a
-                  href={`https://wa.me/${comercio.telefono.replace(/\D/g, '')}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="btn-primary inline-block mt-3 !py-2 !px-5 text-sm"
-                >
-                  Contactar por WhatsApp
-                </a>
-              )}
-            </div>
-          )}
-
-          <p className="text-xs text-navy/40 mt-4">
-            Promo válida hasta el {new Date(promo.fecha_vencimiento).toLocaleDateString('es-AR')}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
+                
