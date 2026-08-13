@@ -19,11 +19,9 @@ export default function PromoDetail() {
     setCargando(true);
     const { data: p } = await supabase.from('promos').select('*').eq('id', id).single();
     if (p) {
-      setPromo(p);
-      const { error: vistaError } = await supabase.rpc('incrementar_vista_promo', { p_promo_id: id });
-      if (vistaError) {
-        alert('Error al sumar vista: ' + vistaError.message);
-      }
+            setPromo(p);
+      supabase.rpc('incrementar_vista_promo', { p_promo_id: id });
+
       const { data: c } = await supabase.from('comercios').select('*').eq('id', p.comercio_id).single();
       setComercio(c);
       const { data: imgs } = await supabase
